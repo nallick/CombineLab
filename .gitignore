@@ -1,0 +1,6 @@
+.DS_Store
+/.build
+/Packages
+/*.xcodeproj
+/.swiftpm/xcode/xcuserdata/nick.xcuserdatad/*
+/.swiftpm/xcode/package.xcworkspace/xcuserdata/*
