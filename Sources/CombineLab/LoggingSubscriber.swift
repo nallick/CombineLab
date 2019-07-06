@@ -17,10 +17,11 @@ public struct LoggingSubscriber<Upstream>: Subscriber where Upstream: Publisher 
     private var subscriberState = SubscriberState()
     private let log: (Logger)?
 
-    public init(_ upstreamPublisher: Upstream, maxRequest: Int, logger: Logger?) {
+    public init(_ upstreamPublisher: Upstream, maxCount: Int, maxRequest: Int, logger: Logger?) {
         self.log = logger
         self.maxRequest = maxRequest
         self.combineIdentifier = CombineIdentifier(self.subscriberState)
+        self.subscriberState.maxCount = maxCount
         upstreamPublisher.subscribe(self)
     }
 
@@ -32,7 +33,9 @@ public struct LoggingSubscriber<Upstream>: Subscriber where Upstream: Publisher 
 
     public func receive(_ input: Input) -> Subscribers.Demand {
         log?("LoggingSubscriber.receive.input: \(input)")
-        return .max(self.maxRequest)
+        self.subscriberState.maxCount -= 1
+        let demandCount = max(0, min(self.subscriberState.maxCount, self.maxRequest))
+        return .max(demandCount)
     }
 
     public func receive(completion: Subscribers.Completion<Upstream.Failure>) {
@@ -41,13 +44,14 @@ public struct LoggingSubscriber<Upstream>: Subscriber where Upstream: Publisher 
     }
 
     private final class SubscriberState {
+        fileprivate var maxCount = Int.max
         fileprivate var hasSubscribed = false
         fileprivate var isComplete = false
     }
 }
 
 extension Publisher {
-    public func logger(maxRequest: Int = 1, logger: ((String) -> Void)? = { Swift.print($0) }) -> LoggingSubscriber<Self> {
-        return LoggingSubscriber(self, maxRequest: maxRequest, logger: logger)
+    public func logger(maxCount: Int = Int.max, maxRequest: Int = 1, logger: ((String) -> Void)? = { Swift.print($0) }) -> LoggingSubscriber<Self> {
+        return LoggingSubscriber(self, maxCount: maxCount, maxRequest: maxRequest, logger: logger)
     }
 }

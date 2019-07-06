@@ -89,6 +89,25 @@ final class CombineLabTests: XCTestCase {
         XCTAssertEqual(actualResult, expectedResult)
     }
 
+    func testSubscribeToInfinteSeriesWithBackpressure() {
+        let expectedResult = """
+            LoggingSubscriber.receive.subscription: CollectByCount
+            LoggingSubscriber.receive.input: [0, 1, 2]
+            LoggingSubscriber.receive.input: [3, 4, 5]
+            """
+
+        var actualResult = ""
+        let infiniteSeries = 0...
+        _ = infiniteSeries.publisher()
+            .collect(3)
+            .logger(maxCount: 2) {  // 2 => backpressure
+                let prefix = actualResult.isEmpty ? "" : "\n"
+                actualResult += prefix + $0
+        }
+
+        XCTAssertEqual(actualResult, expectedResult)
+    }
+
     static var allTests = [
         ("testLoggingSubscriberLogsResults", testLoggingSubscriberLogsResults),
         ("testPreviousValueSubjectDelaysSentValues", testPreviousValueSubjectDelaysSentValues),
@@ -96,5 +115,6 @@ final class CombineLabTests: XCTestCase {
         ("testRandomPublisherProvidesRandomDoubles", testRandomPublisherProvidesRandomDoubles),
         ("testSquareOperatorSquaresInts", testSquareOperatorSquaresInts),
         ("testSquareOperatorSquaresDoubles", testSquareOperatorSquaresDoubles),
+        ("testSubscribeToInfinteSeriesWithBackpressure", testSubscribeToInfinteSeriesWithBackpressure),
     ]
 }
