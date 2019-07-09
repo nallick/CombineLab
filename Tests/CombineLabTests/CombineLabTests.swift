@@ -1,3 +1,4 @@
+import Combine
 import CombineLab
 import XCTest
 
@@ -26,13 +27,14 @@ final class CombineLabTests: XCTestCase {
 
         let subject = PreviousValueSubject<Int>()
         _ = subject
-            .collect(expectedResult.count)
+            .collect()
             .sink { actualResult = $0 }
 
         let testValues = expectedResult + [4]
         for value in testValues {
             subject.send(value)
         }
+        subject.send(completion: .finished)   // subscription leaks unless completed or cancelled
 
         XCTAssertEqual(actualResult, expectedResult)
     }
@@ -108,6 +110,38 @@ final class CombineLabTests: XCTestCase {
         XCTAssertEqual(actualResult, expectedResult)
     }
 
+    func testCurrentValueSubjectSubscriptionLeaksUntilCompleted() {
+        let expectedResult = [1, 2, 3]
+        var actualResult: [Int]?
+        var actualCompletion: Subscribers.Completion<Never>?
+        weak var actualSubscription: AnyObject?
+
+        let subject = CurrentValueSubject<Int, Never>(expectedResult.first!)
+
+        func sendTestValuesToSubject() {
+            _ = subject
+                .collect(expectedResult.count)
+                .breakpoint(receiveSubscription: { actualSubscription = $0 as AnyObject; return false })
+                .sink(receiveCompletion: { actualCompletion = $0 }, receiveValue: { actualResult = $0 })
+
+            let testValues = expectedResult.dropFirst()
+            for value in testValues {
+                subject.send(value)
+            }
+        }
+
+        sendTestValuesToSubject()
+
+        XCTAssertNotNil(actualSubscription)
+        XCTAssertNil(actualCompletion)
+
+        subject.send(completion: .finished)
+
+        XCTAssertNil(actualSubscription)
+        XCTAssertNotNil(actualCompletion)
+        XCTAssertEqual(actualResult, expectedResult)
+    }
+
     static var allTests = [
         ("testLoggingSubscriberLogsResults", testLoggingSubscriberLogsResults),
         ("testPreviousValueSubjectDelaysSentValues", testPreviousValueSubjectDelaysSentValues),
@@ -116,5 +150,6 @@ final class CombineLabTests: XCTestCase {
         ("testSquareOperatorSquaresInts", testSquareOperatorSquaresInts),
         ("testSquareOperatorSquaresDoubles", testSquareOperatorSquaresDoubles),
         ("testSubscribeToInfinteSeriesWithBackpressure", testSubscribeToInfinteSeriesWithBackpressure),
+        ("testCurrentValueSubjectSubscriptionLeaksUntilCompleted", testCurrentValueSubjectSubscriptionLeaksUntilCompleted),
     ]
 }
