@@ -12,7 +12,7 @@ final class CombineLabTests: XCTestCase {
             """
 
         var actualResult = ""
-        _ = (1...2).publisher()
+        _ = (1...2).publisher
             .logger() {
                 let prefix = actualResult.isEmpty ? "" : "\n"
                 actualResult += prefix + $0
@@ -71,7 +71,7 @@ final class CombineLabTests: XCTestCase {
         let expectedResult = [1, 4, 9]
         var actualResult: [Int]?
 
-        _ = (1...3).publisher()
+        _ = (1...3).publisher
             .square()
             .collect()
             .sink { actualResult = $0 }
@@ -83,7 +83,7 @@ final class CombineLabTests: XCTestCase {
         let expectedResult = [100.0, 400.0, 900.0]
         var actualResult: [Double]?
 
-        _ = [10.0, 20.0, 30.0].publisher()
+        _ = [10.0, 20.0, 30.0].publisher
             .square()
             .collect()
             .sink { actualResult = $0 }
@@ -100,7 +100,7 @@ final class CombineLabTests: XCTestCase {
 
         var actualResult = ""
         let infiniteSeries = 0...
-        _ = infiniteSeries.publisher()
+        _ = infiniteSeries.publisher
             .collect(3)
             .logger(maxCount: 2) {  // 2 => backpressure
                 let prefix = actualResult.isEmpty ? "" : "\n"
@@ -110,7 +110,34 @@ final class CombineLabTests: XCTestCase {
         XCTAssertEqual(actualResult, expectedResult)
     }
 
-    func testCurrentValueSubjectSubscriptionLeaksUntilCompleted() {
+    func testCurrentValueSubjectCompletesWhenInScope() {
+        let expectedResult = [1, 2, 3]
+        var actualResult: [Int]?
+        var actualCompletion: Subscribers.Completion<Never>?
+        weak var actualSubscription: AnyObject?
+
+        let subject = CurrentValueSubject<Int, Never>(expectedResult.first!)
+        let unusedButNeeded = subject
+            .collect(expectedResult.count)
+            .breakpoint(receiveSubscription: { actualSubscription = $0 as AnyObject; return false })
+            .sink(receiveCompletion: { actualCompletion = $0 }, receiveValue: { actualResult = $0 })
+
+        let testValues = expectedResult.dropFirst()
+        for value in testValues {
+            subject.send(value)
+        }
+
+        XCTAssertNotNil(actualSubscription)
+        XCTAssertNil(actualCompletion)
+
+        subject.send(completion: .finished)
+
+        XCTAssertNil(actualSubscription)
+        XCTAssertNotNil(actualCompletion)
+        XCTAssertEqual(actualResult, expectedResult)
+    }
+
+    func testCurrentValueSubscriptionDeletedWhenOutOfScope() {
         let expectedResult = [1, 2, 3]
         var actualResult: [Int]?
         var actualCompletion: Subscribers.Completion<Never>?
@@ -119,7 +146,7 @@ final class CombineLabTests: XCTestCase {
         let subject = CurrentValueSubject<Int, Never>(expectedResult.first!)
 
         func sendTestValuesToSubject() {
-            _ = subject
+            let unusedButNeeded = subject
                 .collect(expectedResult.count)
                 .breakpoint(receiveSubscription: { actualSubscription = $0 as AnyObject; return false })
                 .sink(receiveCompletion: { actualCompletion = $0 }, receiveValue: { actualResult = $0 })
@@ -132,13 +159,13 @@ final class CombineLabTests: XCTestCase {
 
         sendTestValuesToSubject()
 
-        XCTAssertNotNil(actualSubscription)
+        XCTAssertNil(actualSubscription)
         XCTAssertNil(actualCompletion)
 
         subject.send(completion: .finished)
 
         XCTAssertNil(actualSubscription)
-        XCTAssertNotNil(actualCompletion)
+        XCTAssertNil(actualCompletion)
         XCTAssertEqual(actualResult, expectedResult)
     }
 
@@ -150,6 +177,7 @@ final class CombineLabTests: XCTestCase {
         ("testSquareOperatorSquaresInts", testSquareOperatorSquaresInts),
         ("testSquareOperatorSquaresDoubles", testSquareOperatorSquaresDoubles),
         ("testSubscribeToInfinteSeriesWithBackpressure", testSubscribeToInfinteSeriesWithBackpressure),
-        ("testCurrentValueSubjectSubscriptionLeaksUntilCompleted", testCurrentValueSubjectSubscriptionLeaksUntilCompleted),
+        ("testCurrentValueSubjectCompletesWhenInScope", testCurrentValueSubjectCompletesWhenInScope),
+        ("testCurrentValueSubscriptionDeletedWhenOutOfScope", testCurrentValueSubscriptionDeletedWhenOutOfScope),
     ]
 }
