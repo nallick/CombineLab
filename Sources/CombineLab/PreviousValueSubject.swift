@@ -38,6 +38,9 @@ public final class PreviousValueSubject<Output>: Subject {
         self.subscriptions.removeAll()
     }
 
+    public func send(subscription: Subscription) {
+    }
+
     private final class PreviousValueSubscription: Subscription {
         private var subscriber: AnySubscriber<Output, Failure>?
         private weak var subject: PreviousValueSubject?

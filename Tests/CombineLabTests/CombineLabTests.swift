@@ -26,7 +26,7 @@ final class CombineLabTests: XCTestCase {
         var actualResult: [Int]?
 
         let subject = PreviousValueSubject<Int>()
-        _ = subject
+        let unusedButNeeded = subject
             .collect()
             .sink { actualResult = $0 }
 
@@ -34,7 +34,7 @@ final class CombineLabTests: XCTestCase {
         for value in testValues {
             subject.send(value)
         }
-        subject.send(completion: .finished)   // subscription leaks unless completed or cancelled
+        subject.send(completion: .finished)
 
         XCTAssertEqual(actualResult, expectedResult)
     }
