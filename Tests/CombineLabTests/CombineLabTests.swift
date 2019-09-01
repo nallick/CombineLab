@@ -30,10 +30,13 @@ final class CombineLabTests: XCTestCase {
             .collect()
             .sink { actualResult = $0 }
 
-        let testValues = expectedResult + [4]
-        for value in testValues {
-            subject.send(value)
+        withExtendedLifetime(unusedButNeeded) {
+            let testValues = expectedResult + [4]
+            for value in testValues {
+                subject.send(value)
+            }
         }
+
         subject.send(completion: .finished)
 
         XCTAssertEqual(actualResult, expectedResult)
@@ -122,9 +125,11 @@ final class CombineLabTests: XCTestCase {
             .breakpoint(receiveSubscription: { actualSubscription = $0 as AnyObject; return false })
             .sink(receiveCompletion: { actualCompletion = $0 }, receiveValue: { actualResult = $0 })
 
-        let testValues = expectedResult.dropFirst()
-        for value in testValues {
-            subject.send(value)
+        withExtendedLifetime(unusedButNeeded) {
+            let testValues = expectedResult.dropFirst()
+            for value in testValues {
+                subject.send(value)
+            }
         }
 
         XCTAssertNotNil(actualSubscription)
@@ -151,9 +156,11 @@ final class CombineLabTests: XCTestCase {
                 .breakpoint(receiveSubscription: { actualSubscription = $0 as AnyObject; return false })
                 .sink(receiveCompletion: { actualCompletion = $0 }, receiveValue: { actualResult = $0 })
 
-            let testValues = expectedResult.dropFirst()
-            for value in testValues {
-                subject.send(value)
+            withExtendedLifetime(unusedButNeeded) {
+                let testValues = expectedResult.dropFirst()
+                for value in testValues {
+                    subject.send(value)
+                }
             }
         }
 
